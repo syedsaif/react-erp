@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { validateLogin } from "../../utils/validation"; // correct path adjust karen
+import { validateLogin } from "../../utils/validation";
+import axios from "axios";
 
 export default function Login({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -9,33 +10,54 @@ export default function Login({ onLogin }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // Clear error on change
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateLogin(formData);
     setErrors(validationErrors);
 
-    if (Object.keys(validationErrors).length === 0) {
-      // Hardcoded check, aap apne logic ke hisab se replace kar sakte hain
-      if (formData.username === "admin" && formData.password === "admin") {
-        toast.success("Login successful!");
-        onLogin();
-      } else {
-        toast.error("Invalid credentials!");
-      }
-    } else {
+    if (Object.keys(validationErrors).length > 0) {
       toast.error("Please fix the errors before submitting.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_APIURL}Auth/login`, {
+        userName: formData.username,
+        password: formData.password,
+      });
+
+      toast.success("Login Successful!");
+      console.log("Response:", res.data);
+
+
+      localStorage.setItem("token", res.data.token);
+
+      // Set localStorage here to persist login
+      localStorage.setItem("isLoggedIn", "true");
+      onLogin();
+
+
+
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message;
+      toast.error("Login Failed! " + errorMsg);
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,9 +91,12 @@ export default function Login({ onLogin }) {
               value={formData.username}
               onChange={handleChange}
               autoFocus
+              disabled={loading}
+              placeholder="Enter your username"
             />
             {errors.username && <div className="invalid-feedback">{errors.username}</div>}
           </div>
+
           <div className="mb-4">
             <label className="form-label fw-semibold text-secondary">Password</label>
             <input
@@ -80,20 +105,21 @@ export default function Login({ onLogin }) {
               className={`form-control form-control-lg ${errors.password ? "is-invalid" : ""}`}
               value={formData.password}
               onChange={handleChange}
+              disabled={loading}
+              placeholder="Enter your password"
             />
             {errors.password && <div className="invalid-feedback">{errors.password}</div>}
           </div>
+
           <button
             type="submit"
             className="btn btn-primary btn-lg w-100 fw-semibold"
+            disabled={loading}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>
     </div>
   );
 }
-
-
-
