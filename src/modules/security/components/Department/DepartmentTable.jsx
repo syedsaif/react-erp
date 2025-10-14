@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+//import axios from "axios";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import api from '../../../../services/apiInterceptor';
 
 export default function DepartmentTable({ onEdit, onDelete, onView }) {
   const [departments, setDepartments] = useState([]);
@@ -15,7 +16,7 @@ export default function DepartmentTable({ onEdit, onDelete, onView }) {
   const fetchDepartments = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_APIURL}department/GetAll`);
+      const res = await api.get(`department/GetAll`);
       setDepartments(res.data.departments || []);
     } catch (error) {
       console.error("❌ Failed to fetch departments:", error);
