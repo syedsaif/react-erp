@@ -81,7 +81,7 @@ export const validateLogin = (data) => {
       type: "text",
       required: true,
       label: "Username",
-      minLength: 3,
+      //minLength: 3,
     }),
   };
 
@@ -93,7 +93,7 @@ export const validateLogin = (data) => {
       type: "text",
       required: true,
       label: "Password",
-      minLength: 5,
+      //minLength: 5,
     }),
   };
 
