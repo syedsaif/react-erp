@@ -1,0 +1,166 @@
+import React, { useRef, useEffect, useState } from "react";
+import useForm from "../../hooks/useForm";
+import { validateField } from "../../../../utils/validation";
+import { toast } from "react-toastify";
+import api from '../../../../services/apiInterceptor';
+
+export default function DesignationForm({ initialData = {}, onSuccess, onCancel }) {
+  const hasShownValidationToast = useRef(false);
+  const [parentDesignations, setParentDesignations] = useState([]);
+
+  // ✅ Fetch filtered parent designations on mount
+  useEffect(() => {
+    async function fetchParentDesignations() {
+      try {
+        const response = await api.get(`designation/GetFiltereDropdown`);
+        console.log("✅ Parent Designations Fetched:", response.data);
+        setParentDesignations(response.data.designations || []);
+      } catch (error) {
+        console.error("❌ Failed to load parent designations", error);
+        toast.error("❌ Failed to load parent designations");
+      }
+    }
+
+    fetchParentDesignations();
+  }, []);
+
+  // ✅ Validation
+  const validate = (data) => {
+    let errors = {};
+
+    errors = {
+      ...errors,
+      ...validateField({
+        name: "name",
+        value: data.name,
+        type: "text",
+        label: "Designation Name",
+        minLength: 3,
+      }),
+    };
+
+    return errors;
+  };
+
+  // ✅ useForm Hook
+  const { formData, errors, handleChange, handleSubmit, loading } = useForm(
+    {
+      id: initialData?.id ?? 0,
+      name: initialData?.name || "",
+      parentId: initialData?.parentId ?? -1, // -1 means "-- None --"
+      isActive: initialData?.isActive ?? true,
+    },
+    validate,
+    async (data) => {
+      try {
+        // ✅ Find parent name from selected ID
+        const selectedParent = parentDesignations.find(p => p.id === Number(data.parentId));
+
+        // ✅ Handle "-- None --" properly
+        const payload = {
+          Id: data.id,
+          Name: data.name,
+          ParentId: data.parentId === -1 ? null : data.parentId,
+          ParentName: data.parentId === -1 ? "None" : selectedParent?.name || "",
+          IsActive: data.isActive,
+        };
+
+        let response;
+
+        if (data.id && data.id !== 0) {
+          response = await api.put(`designation/Update`, payload);
+          toast.success(response.data.message || "✅ Designation updated successfully!");
+        } else {
+          response = await api.post(`designation/Insert`, payload);
+          toast.success(response.data.message || "✅ Designation created successfully!");
+        }
+
+        if (onSuccess) onSuccess();
+        hasShownValidationToast.current = false;
+      } catch (error) {
+        console.error("Designation save error:", error);
+        const serverMsg = error.response?.data?.message || error.response?.data?.Message;
+        toast.error(serverMsg ? "❌ " + serverMsg : "🚨 Internal Server Error. Please try again.");
+      }
+    }
+  );
+
+  // ✅ Show toast on first validation error
+  useEffect(() => {
+    if (Object.keys(errors).length > 0 && !hasShownValidationToast.current) {
+      const firstError = Object.values(errors)[0];
+      if (firstError) toast.error(firstError);
+      hasShownValidationToast.current = true;
+    }
+  }, [errors]);
+
+  return (
+    <div className="form-section border p-4 mb-3 bg-light rounded">
+      <h5>{formData.id && formData.id !== 0 ? "✏️ Edit Designation" : "➕ Add Designation"}</h5>
+
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="row g-3">
+
+          {/* Designation Name */}
+          <div className="col-md-6">
+            <label className="form-label">Designation Name</label>
+            <input
+              type="text"
+              name="name"
+              className={`form-control ${errors.name ? "is-invalid" : ""}`}
+              value={formData.name}
+              onChange={handleChange}
+              autoComplete="off"
+            />
+            {errors.name && <div className="invalid-feedback">{errors.name}</div>}
+          </div>
+
+          {/* Parent Designation Dropdown */}
+          <div className="col-md-6">
+            <label className="form-label">Parent Designation</label>
+            <select
+              name="parentId"
+              className="form-select"
+              value={formData.parentId}
+              onChange={handleChange}
+            >
+              <option value={-1}>--- None ---</option>
+              {parentDesignations.map((parent) => (
+                <option key={parent.id} value={parent.id}>
+                  {parent.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Is Active */}
+          <div className="col-md-6 d-flex align-items-center mt-4">
+            <div className="form-check">
+              <input
+                type="checkbox"
+                name="isActive"
+                className="form-check-input"
+                id="isActive"
+                checked={formData.isActive}
+                onChange={handleChange}
+              />
+              <label className="form-check-label" htmlFor="isActive">
+                Is Active?
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="mt-4">
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            💾 {loading ? "Saving..." : formData.id && formData.id !== 0 ? "Update" : "Save"}
+          </button>
+          <button type="button" className="btn btn-secondary ms-2" onClick={onCancel} disabled={loading}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
