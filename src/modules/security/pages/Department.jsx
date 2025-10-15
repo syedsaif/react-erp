@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import axios from "axios";
+//import axios from "axios";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import ConfirmModal from "../../../components/common/ConfirmModal";
 import DepartmentForm from "../components/Department/DepartmentForm";
 import DepartmentTable from "../components/Department/DepartmentTable";
 import DepartmentView from "../components/Department/DepartmentView";
+import api from '../../../services/apiInterceptor';
 
 export default function Department() {
   const [selectedDept, setSelectedDept] = useState(null);
@@ -14,7 +15,7 @@ export default function Department() {
   const [showForm, setShowForm] = useState(false);
   const [showView, setShowView] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false); // ✅ new
-  const apiUrl = import.meta.env.VITE_APIURL;
+  //const apiUrl = import.meta.env.VITE_APIURL;
 
   const reloadTable = () => setRefreshFlag((prev) => !prev);
 
@@ -46,7 +47,7 @@ export default function Department() {
   const handleDelete = async () => {
     try {
       const id = selectedDept.id;
-      const response = await axios.delete(`${apiUrl}department/Delete/${id}`);
+      const response = await api.delete(`department/Delete/${id}`);
       if (response.status === 200) {
         toast.success("🗑️ Department deleted successfully!");
         reloadTable();
