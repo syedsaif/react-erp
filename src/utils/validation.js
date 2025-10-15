@@ -45,8 +45,15 @@ export const validateField = ({
     }
   }
 
+  // ✅ Dropdown validation: checks for -1, null, undefined, or empty string
   if (type === "dropdown") {
-    if (!value) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === "" ||
+      value === -1 ||
+      value === "-1"
+    ) {
       errors[name] = `Please select a ${displayName}.`;
       return errors;
     }
