@@ -95,10 +95,10 @@ export default function DesignationSiblingForm({ initialData = {}, onSuccess, on
 
   // ✅ Toast on first validation error
   useEffect(() => {
-    if (Object.keys(errors).length > 0 && !hasShownValidationToast.current) {
-      const firstError = Object.values(errors)[0];
-      if (firstError) toast.error(firstError);
-      hasShownValidationToast.current = true;
+    if (Object.keys(errors).length > 0) {
+      Object.values(errors).forEach((errMsg) => {
+        if (errMsg) toast.error(errMsg);
+      });
     }
   }, [errors]);
 
