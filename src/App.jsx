@@ -6,10 +6,10 @@ import Login from "./pages/auth/Login";
 import Header from "./layouts/Header";
 import Navbar from "./layouts/Navbar";
 import Footer from "./layouts/Footer";
-import Designation from "./modules/security/pages/Designation";
-import DesignationView from "./modules/security/components/Designation/DesignationView";
-//  import DesignationSibling from "./modules/security/pages/DesignationSibling";
-//  import DesignationSiblingView from "./modules/security/components/DesignationSibling/DesignationSiblingView";
+// import Designation from "./modules/security/pages/Designation";
+// import DesignationView from "./modules/security/components/Designation/DesignationView";
+ import DesignationSibling from "./modules/security/pages/DesignationSibling";
+ import DesignationSiblingView from "./modules/security/components/DesignationSibling/DesignationSiblingView";
 
 
 
@@ -54,9 +54,9 @@ function App() {
                <>
 
                 {/* <Route path="/" element={<Navigate to="/departments" replace />} /> */}
-                <Route path="/designations" element={<Designation />} />
-                <Route path="/designations/view/:id" element={<DesignationView />} />
-                <Route path="*" element={<Navigate to="/designations" replace />} />
+                <Route path="/designationSiblings" element={<DesignationSibling />} />
+                <Route path="/designationSiblings/view/:id" element={<DesignationSiblingView />} />
+                <Route path="*" element={<Navigate to="/designationSiblings" replace />} />
               </>
             )}
            </Routes>
