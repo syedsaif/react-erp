@@ -84,18 +84,19 @@ export default function DesignationSiblingTable({ onEdit, onDelete, onView }) {
         emptyMessage="No designation siblings found"
         filterDisplay="row"
       >
-        <Column
-          field="name"
-          header="Designation Sibling"
-          filter
-          filterPlaceholder="Search name"
-          sortable
-        />
+        
         <Column
           field="designationName"
           header="Designation"
           filter
           filterPlaceholder="Search designation"
+          sortable
+        />
+        <Column
+          field="name"
+          header="Designation Sibling"
+          filter
+          filterPlaceholder="Search name"
           sortable
         />
         <Column
