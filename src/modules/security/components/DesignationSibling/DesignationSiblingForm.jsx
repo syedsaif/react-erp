@@ -94,13 +94,31 @@ export default function DesignationSiblingForm({ initialData = {}, onSuccess, on
   );
 
   // ✅ Toast on first validation error
-  useEffect(() => {
-    if (Object.keys(errors).length > 0) {
-      Object.values(errors).forEach((errMsg) => {
-        if (errMsg) toast.error(errMsg);
-      });
+  // useEffect(() => {
+  //   if (Object.keys(errors).length > 0) {
+  //     Object.values(errors).forEach((errMsg) => {
+  //       if (errMsg) toast.error(errMsg);
+  //     });
+  //   }
+  // }, [errors]);
+
+  const shownErrors = React.useRef(new Set());
+
+React.useEffect(() => {
+  // Loop through all current errors
+  Object.entries(errors).forEach(([field, message]) => {
+    if (message && !shownErrors.current.has(field)) {
+      toast.error(message);
+      shownErrors.current.add(field); // mark this field as shown
     }
-  }, [errors]);
+  });
+
+  // Reset when no errors left
+  if (Object.keys(errors).length === 0) {
+    shownErrors.current.clear();
+  }
+}, [errors]);
+
 
   // ✅ Render Form
   return (

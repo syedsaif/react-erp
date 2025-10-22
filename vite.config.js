@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    open: true // 👈 this will auto-open the browser (default one)
+    open: true,               // browser auto open
+    historyApiFallback: true  // 👈 FIX for "No routes matched /dashboard"
   }
 })
+

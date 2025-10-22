@@ -1,0 +1,93 @@
+/* 🌐 Global Nested Dropdown Fix
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu .dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -1px;
+}
+
+
+.dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.navbar-nav {
+  margin-left: 120px; 
+}
+ */
+/* 🌐 Global Nested Dropdown Fix */
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu .dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -1px;
+}
+
+/* 🌟 Dropdown Visual Styling */
+.dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 6px 0;
+  border: 1px solid #eee;
+}
+
+.dropdown-item {
+  padding: 8px 16px;
+  transition: all 0.2s ease-in-out;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+  color: #0d6efd !important;
+}
+
+/* 🌟 Navbar Menu Styling */
+.navbar-nav {
+  margin-left: 100px; /* adjust spacing from left */
+}
+
+.navbar-nav .nav-link,
+.navbar-nav .dropdown-item {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  color: #333 !important;
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .dropdown-item:hover {
+  color: #0d6efd !important;
+}
+
+.navbar-nav .dropdown-item.active,
+.navbar-nav .nav-link.active {
+  background-color: #727c8b !important;
+  color: #fff !important;
+  border-radius: 6px;
+}
+
+/* 🌟 Optional: Smooth dropdown animation */
+.dropdown-menu.show {
+  animation: fadeIn 0.15s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { validateLogin } from "../../utils/validation";
-import axios from "axios";
+import api from '../../services/apiInterceptor';
 
 export default function Login({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -35,7 +35,8 @@ export default function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      const res = await axios.post(`${import.meta.env.VITE_APIURL}Auth/login`, {
+      // 🔹 Use interceptor for login API
+      const res = await api.post(`Auth/login`, {
         userName: formData.username,
         password: formData.password,
       });
@@ -43,14 +44,15 @@ export default function Login({ onLogin }) {
       toast.success("Login Successful!");
       console.log("Response:", res.data);
 
-
+      // 🔹 Save token in localStorage
       localStorage.setItem("token", res.data.token);
 
-      // Set localStorage here to persist login
+      // 🔹 Set token for future API calls
+      api.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
+
+      // 🔹 Persist login state
       localStorage.setItem("isLoggedIn", "true");
       onLogin();
-
-
 
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message;
