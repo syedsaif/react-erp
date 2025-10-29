@@ -1,45 +1,37 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { FilterMatchMode } from "primereact/api";
 import api from '../../../../services/apiInterceptor';
 import { InputText } from 'primereact/inputtext';
+import { toast } from "react-toastify";
 
-export default function DocumentTable({ onDelete, onView, onComplete }) {
-  const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({});
+export default function DocumentTable({ 
+  onDelete, 
+  onViewDetails, 
+  onComplete, 
+  onStatusUpdate, // ✅ NEW: Added callback from parent
+  documents, // ✅ NEW: Receive documents from parent instead of fetching here
+  loading // ✅ NEW: Receive loading state from parent
+}) {
+  const [filters] = useState({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    code: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    documentName: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    fromUser: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    createdByName: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    toUserName: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    priorityName: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    status: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    documentType: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  });
 
-  useEffect(() => {
-    fetchDocuments();
-    initFilters();
-  }, []);
+  // ✅ REMOVED: Local documents state and fetchDocuments
+  // const [documents, setDocuments] = useState([]);
+  // const [loading, setLoading] = useState(false);
 
-  const fetchDocuments = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`document/GetAll`);
-      setDocuments(res.data.documents || []);
-    } catch (error) {
-      console.error("❌ Failed to fetch documents:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const initFilters = () => {
-    setFilters({
-      global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      code: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      documentName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      fromUser: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      createdByName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      toUserName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      priorityName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      status: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    });
-  };
+  // ✅ REMOVED: useEffect and fetchDocuments since data comes from parent now
 
   const statusTemplate = (rowData) => (
     <span
@@ -50,56 +42,119 @@ export default function DocumentTable({ onDelete, onView, onComplete }) {
           ? "bg-primary"
           : "bg-secondary"
       }`}
+      aria-label={`Status: ${rowData.status}`}
     >
       {rowData.status}
     </span>
   );
 
+  const handleView = async (doc) => {
+    try {
+      const data = { Id: doc.id };
+      const response = await api.put(`document/Viewed`, data, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status === 200) {
+        // ✅ Update via parent callback instead of local state
+        if (onStatusUpdate) {
+          onStatusUpdate(doc.id, doc.status, true); // Pass isViewed=true
+        }
+        
+        toast.success(`✅ Document "${doc.documentName}" marked as viewed!`);
+      } else {
+        toast.error("❌ Failed to mark document as viewed!");
+      }
+    } catch (error) {
+      console.error("View action error:", error);
+      toast.error("❌ Failed to mark document as viewed.");
+    }
+  };
+
+  // ✅ NEW: Handle complete with proper callback
+  const handleComplete = async (rowData) => {
+    try {
+      // Call parent's complete handler (which opens modal)
+      if (onComplete) {
+        onComplete(rowData);
+        return true; // Return success since modal will handle the actual completion
+      }
+      return false;
+    } catch (error) {
+      console.error("Complete action error:", error);
+      return false;
+    }
+  };
+
   const actionBodyTemplate = (rowData) => (
     <div className="d-flex gap-2 justify-content-center">
+      {/* View Details Button */}
       <Button
         icon="pi pi-eye"
         className="p-button-rounded p-button-info p-button-sm"
-        onClick={() => onView(rowData)}
-        tooltip="View"
+        onClick={() => onViewDetails(rowData)}
+        tooltip="View Details"
+        aria-label={`View details of ${rowData.documentName}`}
       />
-      
-      {/* ✅ Completed Button - Parent component se onComplete call karo */}
+
+      {/* Mark as Viewed Button */}
       <Button
+        icon="pi pi-eye"
+        className="p-button-rounded p-button-success p-button-sm"
+        onClick={() => handleView(rowData)}
+        tooltip="Mark as Viewed"
+        disabled={rowData.isViewed === true}
+        aria-label={
+          rowData.isViewed
+            ? `${rowData.documentName} is already viewed`
+            : `Mark ${rowData.documentName} as viewed`
+        }
+      />
+
+      {/* Mark as Completed Button - UPDATED */}
+      <Button
+        type="button"
         icon="pi pi-check"
         className="p-button-rounded p-button-success p-button-sm"
-        onClick={() => onComplete(rowData)}
+        onClick={async () => {
+          await handleComplete(rowData);
+          // ✅ No need for optimistic update here anymore
+          // Parent's handleComplete will open modal and handle the update
+        }}
         tooltip="Mark as Completed"
-        disabled={rowData.status === "Completed"}
+        disabled={rowData.status?.trim().toLowerCase() === "completed"}
+        aria-label={
+          rowData.status?.toLowerCase() === "completed"
+            ? `${rowData.documentName} is already completed`
+            : `Mark ${rowData.documentName} as completed`
+        }
       />
 
-        {/* ✅ Delete button - disabled if already completed */}
-    <Button
-      icon="pi pi-trash"
-      className="p-button-rounded p-button-danger p-button-sm"
-      onClick={() => onDelete(rowData)}
-      tooltip={
-        rowData.status === "Completed"
-          ? "Cannot delete completed document"
-          : "Delete"
-      }
-      disabled={rowData.status === "Completed"} // 👈 Disable delete if completed
-    />
-
+      {/* Delete Button */}
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-danger p-button-sm"
+        onClick={() => onDelete(rowData)}
+        tooltip="Delete"
+        aria-label={`Delete document ${rowData.documentName}`}
+      />
     </div>
   );
 
-  // Custom filter component
+  // Custom input filter component for columns - with accessibility improvements
   const LargeFilter = (options) => {
     return (
       <InputText
         value={options.value}
         onChange={(e) => options.filterApplyCallback(e.target.value)}
         placeholder={options.placeholder}
-        style={{ 
-          width: '100%', 
-          minWidth: '120px', 
-          padding: '10px 14px', 
+        aria-label={`Filter by ${options.placeholder}`}
+        style={{
+          width: '100%',
+          minWidth: '120px',
+          padding: '10px 14px',
           fontSize: '14px',
           height: '40px'
         }}
@@ -130,6 +185,7 @@ export default function DocumentTable({ onDelete, onView, onComplete }) {
             "toUserName",
             "priorityName",
             "status",
+            "documentType",
           ]}
         >
           <Column
@@ -145,6 +201,16 @@ export default function DocumentTable({ onDelete, onView, onComplete }) {
           <Column
             field="documentName"
             header="Document Name"
+            sortable
+            filter
+            filterElement={LargeFilter}
+            filterPlaceholder="Search name"
+            style={{ width: "250px", whiteSpace: "nowrap" }}
+          />
+
+          <Column
+            field="documentType"
+            header="Document Type"
             sortable
             filter
             filterElement={LargeFilter}

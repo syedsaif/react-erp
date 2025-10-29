@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
@@ -10,16 +10,51 @@ import DocumentView from "../../document/components/Document/DocumentView";
 import api from '../../../services/apiInterceptor';
 
 export default function Document() {
+  const [documents, setDocuments] = useState([]);
   const [selectedDoc, setSelectedDoc] = useState(null);
-  const [selectedDocForwards, setSelectedDocForwards] = useState([]); // <-- Forwards data here
-  const [refreshFlag, setRefreshFlag] = useState(false);
+  const [selectedDocForwards, setSelectedDocForwards] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [showView, setShowView] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const reloadTable = () => setRefreshFlag((prev) => !prev);
+  // Fetch all documents
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('document/GetAll');
+      if (response.status === 200) {
+        setDocuments(response.data.documents || response.data || []);
+      } else {
+        toast.error("Failed to load documents.");
+      }
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      toast.error("Failed to load documents.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  // ✅ NEW: Function for child component to update document status
+  const handleDocumentStatusUpdate = (docId, newStatus) => {
+    setDocuments(prevDocs =>
+      Array.isArray(prevDocs)
+        ? prevDocs.map(d =>
+            d.id === docId 
+              ? { ...d, status: newStatus, isViewed: true }
+              : d
+          )
+        : []
+    );
+  };
+
+  // Add New document
   const handleAddNew = () => {
     setSelectedDoc(null);
     setSelectedDocForwards([]);
@@ -27,6 +62,7 @@ export default function Document() {
     setShowForm(true);
   };
 
+  // Edit document
   const handleEdit = (doc) => {
     setSelectedDoc(doc);
     setSelectedDocForwards([]);
@@ -34,74 +70,94 @@ export default function Document() {
     setShowForm(true);
   };
 
-//   const handleView = async (doc) => {
-//   setShowForm(false);
-//   setShowView(true);
-//   setSelectedDoc(null); // reset previous document
-//   try {
-//     // Fetch document by ID
-//     const response = await api.get(`document/GetById/${doc.id}`);
+  // View document details + forwards
+  const handleViewDetails = async (doc) => {
+    setShowForm(false);
+    setShowView(true);
+    setSelectedDoc(null);
+    setSelectedDocForwards([]);
 
-//     if (response.status === 200 && response.data && response.data.document) {
-//       setSelectedDoc(response.data.document); // set full document object including forwards
-//     } else {
-//       toast.info("No document data found.");
-//       setSelectedDoc(null);
-//     }
-//   } catch (error) {
-//     console.error("Failed to fetch document forwards:", error);
-//     toast.error("Failed to load document forwards.");
-//     setSelectedDoc(null);
-//   }
-// };
-
-
-const handleView = async (doc) => {
-  setShowForm(false);
-  setShowView(true);
-  setSelectedDoc(null); // reset first
-  setSelectedDocForwards([]); // clear previous forwards
-
-  try {
-    const response = await api.get(`document/GetById/${doc.id}`);
-    if (response.status === 200) {
-      // ✅ Update both
-      setSelectedDoc(response.data.document);
-      setSelectedDocForwards(response.data.document.documentForwards || []);
-    } else {
-      toast.info("No forwards found for this document.");
+    try {
+      const response = await api.get(`document/GetById/${doc.id}`);
+      if (response.status === 200) {
+        setSelectedDoc(response.data.document || response.data);
+        setSelectedDocForwards(response.data.document?.documentForwards || response.data.documentForwards || []);
+      } else {
+        toast.info("No forwards found for this document.");
+      }
+    } catch (error) {
+      console.error("Failed to fetch document forwards:", error);
+      toast.error("Failed to load document forwards.");
     }
-  } catch (error) {
-    console.error("Failed to fetch document forwards:", error);
-    toast.error("Failed to load document forwards.");
-  }
-};
+  };
 
+  // ✅ Mark document as viewed - UPDATED
+  const handleView = async (doc) => {
+    try {
+      const response = await api.put('document/Viewed', { Id: doc.id }, {
+        headers: { "Content-Type": "application/json" },
+      });
 
+      if (response.status === 200) {
+        toast.success(`✅ Document "${doc.documentName}" marked as viewed!`);
 
+        // ✅ Update documents state immediately
+        setDocuments(prevDocs =>
+          Array.isArray(prevDocs)
+            ? prevDocs.map(d => d.id === doc.id ? { ...d, isViewed: true } : d)
+            : []
+        );
+      } else {
+        toast.error("❌ Failed to mark document as viewed!");
+      }
+    } catch (error) {
+      console.error("View action error:", error);
+      toast.error("❌ Failed to mark document as viewed.");
+    }
+  };
+
+  // ✅ Open complete modal
   const handleComplete = (doc) => {
     setSelectedDoc(doc);
     setShowCompletedModal(true);
   };
 
-  const handleCompletionConfirm = async (completionData) => {
+  // ✅ Confirm completion
+  const handleCompletionConfirm = async (completionData, e) => {
+    e?.preventDefault(); // Prevent form submit from refreshing page
+
+    if (!selectedDoc) {
+      toast.error("No document selected for completion.");
+      return;
+    }
+
     try {
       const data = new FormData();
       data.append("Id", selectedDoc.id);
-      data.append("Remarks", completionData.remarks);
+      data.append("Remarks", completionData.remarks || "");
       if (completionData.file) {
         data.append("File", completionData.file);
       }
 
-      const response = await api.put(`document/Update`, data, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const response = await api.put('document/Completed', data, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (response.status === 200) {
         toast.success(`✅ Document "${selectedDoc.documentName}" marked as completed!`);
-        reloadTable();
+
+        // ✅ Optimistic UI update: update documents state to mark completed
+        setDocuments(prevDocs =>
+          Array.isArray(prevDocs)
+            ? prevDocs.map(d =>
+                d.id === selectedDoc.id
+                  ? { ...d, status: "Completed", isViewed: true } // button disable & viewed
+                  : d
+              )
+            : []
+        );
+
+        // ✅ Close modal & reset selection
         setShowCompletedModal(false);
         setSelectedDoc(null);
         setSelectedDocForwards([]);
@@ -114,24 +170,35 @@ const handleView = async (doc) => {
     }
   };
 
+  // ✅ Close completed modal manually
   const handleCloseCompletedModal = () => {
     setShowCompletedModal(false);
     setSelectedDoc(null);
     setSelectedDocForwards([]);
   };
 
+  // Open delete confirm modal
   const handleDeleteRequest = (doc) => {
     setSelectedDoc(doc);
     setShowConfirm(true);
   };
 
+  // Delete document
   const handleDelete = async () => {
+    if (!selectedDoc) {
+      toast.error("No document selected for deletion.");
+      setShowConfirm(false);
+      return;
+    }
+
     try {
       const id = selectedDoc.id;
       const response = await api.delete(`document/Delete/${id}`);
       if (response.status === 200) {
         toast.success("🗑️ Document deleted successfully!");
-        reloadTable();
+        setDocuments(prevDocs =>
+          Array.isArray(prevDocs) ? prevDocs.filter(d => d.id !== id) : []
+        );
       } else {
         toast.error("❌ Failed to delete document!");
       }
@@ -145,6 +212,7 @@ const handleView = async (doc) => {
     }
   };
 
+  // Cancel form/view
   const handleCancel = () => {
     setShowForm(false);
     setShowView(false);
@@ -152,11 +220,12 @@ const handleView = async (doc) => {
     setSelectedDocForwards([]);
   };
 
+  // After add/edit success
   const handleSuccess = () => {
     setShowForm(false);
     setSelectedDoc(null);
     setSelectedDocForwards([]);
-    reloadTable();
+    fetchDocuments();  // reload fresh list
   };
 
   return (
@@ -191,18 +260,21 @@ const handleView = async (doc) => {
             onCancel={handleCancel}
           />
         ) : showView ? (
-            <DocumentView
-              document={selectedDoc}
-              documentForwardData={selectedDocForwards}
-              onBack={handleCancel}
-            />
+          <DocumentView
+            document={selectedDoc}
+            documentForwardData={selectedDocForwards}
+            onBack={handleCancel}
+          />
         ) : (
           <DocumentTable
-            key={refreshFlag}
+            documents={documents} // ✅ Documents prop pass
+            loading={loading} // ✅ Loading prop pass
             onEdit={handleEdit}
-            onView={handleView}
+            onViewDetails={handleViewDetails}
+            onView={handleView} // ✅ Updated handleView function pass
             onDelete={handleDeleteRequest}
             onComplete={handleComplete}
+            onStatusUpdate={handleDocumentStatusUpdate} // ✅ NEW: Pass callback to child
           />
         )}
 
