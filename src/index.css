@@ -117,4 +117,18 @@ body {
   min-height: 100vh;
 }
 
+/*
+  Custom CSS to fix PrimeReact MultiSelect auto-height issue.
+  This allows the component to grow vertically as more items (chips) are selected.
+*/
+.p-multiselect.multiselect-auto-height {
+  height: auto;
+  min-height: 38px; /* Standard input height */
+}
 
+.p-multiselect.multiselect-auto-height .p-multiselect-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem; /* Adds some space between the chips */
+  padding: 0.25rem 0.5rem; /* Adjust padding for better look */
+}

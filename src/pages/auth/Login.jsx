@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { validateLogin } from "../../utils/validation";
-import api from '../../services/apiInterceptor';
+import { loginUser } from "../../APICalls/AuthService";
 
 export default function Login({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -35,28 +35,13 @@ export default function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      // 🔹 Use interceptor for login API
-      const res = await api.post(`Auth/login`, {
-        userName: formData.username,
-        password: formData.password,
-      });
-
-      toast.success("Login Successful!");
-      console.log("Response:", res.data);
-
-      // 🔹 Save token in localStorage
-      localStorage.setItem("token", res.data.token);
-
-      // 🔹 Set token for future API calls
-      api.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
-
+      // 🔹 AuthService se login function call karein
+      await loginUser(formData.username, formData.password);
+      
       // 🔹 Persist login state
       localStorage.setItem("isLoggedIn", "true");
       onLogin();
-
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
-      toast.error("Login Failed! " + errorMsg);
       console.error(error);
     } finally {
       setLoading(false);
@@ -82,7 +67,7 @@ export default function Login({ onLogin }) {
           border: "1px solid rgba(255, 255, 255, 0.3)",
         }}
       >
-        <h3 className="text-center mb-4 text-primary fw-bold">🔐 Login to ERP</h3>
+        <h3 className="text-center mb-4 text-primary fw-bold">🔐 Login</h3>
         <form onSubmit={handleSubmit} noValidate>
           <div className="mb-3">
             <label className="form-label fw-semibold text-secondary">Username</label>

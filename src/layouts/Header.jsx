@@ -1,133 +1,148 @@
-import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-// ✅ Import all app logos
-import securityLogo from "../assets/images/logo_security.png";
-import complaintLogo from "../assets/images/logo_complaint.png";
-import requisitionLogo from "../assets/images/logo_requisition.png";
-import vehicleLogo from "../assets/images/logo_vehicle.png";
-import fundsLogo from "../assets/images/logo_fund.png";
-import distributionLogo from "../assets/images/logo_distribution.png";
-import trainingLogo from "../assets/images/logo_training.png";
-import misLogo from "../assets/images/logo_management.png";
-import documentsLogo from "../assets/images/logo_document.png";
+// Logos
+import securityLogo from '../assets/images/logo_security.png';
+import complaintLogo from '../assets/images/logo_complaint.png';
+import requisitionLogo from '../assets/images/logo_requisition.png';
+import vehicleLogo from '../assets/images/logo_vehicle.png';
+import fundsLogo from '../assets/images/logo_fund.png';
+import distributionLogo from '../assets/images/logo_distribution.png';
+import trainingLogo from '../assets/images/logo_training.png';
+import misLogo from '../assets/images/logo_management.png';
+import documentsLogo from '../assets/images/logo_document.png';
 
 export default function Header({ onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [username, setUsername] = useState('Guest');
 
-  // ✅ Update time every second
+  // Update clock every second
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // ✅ Hardcoded username - aap baad mein dynamic kar lena
-  const username = "Super Admin";
+  // Update username from localStorage
+  const updateUserData = () => {
+    const fullName = localStorage.getItem('userFullName');
+    if (fullName && fullName !== 'undefined' && fullName !== 'null') {
+      setUsername(fullName);
+      return;
+    }
 
-  // ✅ Get current app logo based on URL path
-  const getCurrentAppLogo = () => {
-    const path = location.pathname;
-    
-    if (path.includes("/designation") || path.includes("/cms")) {
-      return complaintLogo;
-    } else if (path.includes("/requisition") || path.includes("/rms")) {
-      return requisitionLogo;
-    } else if (path.includes("/vehicle") || path.includes("/vms")) {
-      return vehicleLogo;
-    } else if (path.includes("/funds") || path.includes("/fms")) {
-      return fundsLogo;
-    } else if (path.includes("/distribution") || path.includes("/dms")) {
-      return distributionLogo;
-    } else if (path.includes("/training") || path.includes("/tms")) {
-      return trainingLogo;
-    } else if (path.includes("/mis")) {
-      return misLogo;
-    } else if (path.includes("/document") || path.includes("/doc")) {
-      return documentsLogo;
-    }else {
-      return securityLogo; // Default security logo
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUsername(userData.UserFullName || 'User');
+    } else {
+      setUsername('Guest');
     }
   };
 
-  // ✅ Check if we're outside security app
-  const isOutsideSecurity = !location.pathname.startsWith("/security") && 
-                           location.pathname !== "/" && 
-                           !location.pathname.includes("/Default");
+  useEffect(() => {
+    updateUserData();
+    window.addEventListener('storage', updateUserData);
+    return () => window.removeEventListener('storage', updateUserData);
+  }, []);
 
-  // ✅ Format date and time
+  // App logo mapping
+  const getCurrentAppLogo = () => {
+    const path = location.pathname;
+    if (path.includes('/designation') || path.includes('/cms')) return complaintLogo;
+    if (path.includes('/requisition') || path.includes('/rms')) return requisitionLogo;
+    if (path.includes('/vehicle') || path.includes('/vms')) return vehicleLogo;
+    if (path.includes('/funds') || path.includes('/fms')) return fundsLogo;
+    if (path.includes('/distribution') || path.includes('/dms')) return distributionLogo;
+    if (path.includes('/training') || path.includes('/tms')) return trainingLogo;
+    if (path.includes('/mis')) return misLogo;
+    if (path.includes('/document') || path.includes('/doc')) return documentsLogo;
+    return securityLogo;
+  };
+
+  // App colors
+  const appColors = {
+    complaint: { primary: '#6d4c41', secondary: '#8d6e63' },
+    requisition: { primary: '#00695c', secondary: '#00897b' },
+    vehicle: { primary: '#5e35b1', secondary: '#7e57c2' },
+    funds: { primary: '#283593', secondary: '#3949ab' },
+    distribution: { primary: '#d84315', secondary: '#f4511e' },
+    training: { primary: '#00838f', secondary: '#0097a7' },
+    mis: { primary: '#455a64', secondary: '#546e7a' },
+    document: { primary: '#0d47a1', secondary: '#1976d2' },
+    security: { primary: '#1c3d5a', secondary: '#3c6e99' },
+  };
+
+  const getCurrentAppColors = () => {
+    const path = location.pathname;
+    if (path.includes('/designation') || path.includes('/cms')) return appColors.complaint;
+    if (path.includes('/requisition') || path.includes('/rms')) return appColors.requisition;
+    if (path.includes('/vehicle') || path.includes('/vms')) return appColors.vehicle;
+    if (path.includes('/funds') || path.includes('/fms')) return appColors.funds;
+    if (path.includes('/distribution') || path.includes('/dms')) return appColors.distribution;
+    if (path.includes('/training') || path.includes('/tms')) return appColors.training;
+    if (path.includes('/mis')) return appColors.mis;
+    if (path.includes('/document') || path.includes('/doc')) return appColors.document;
+    return appColors.security;
+  };
+
+  const isOutsideSecurity =
+    !location.pathname.startsWith('/security') &&
+    location.pathname !== '/' &&
+    !location.pathname.includes('/Default');
+
   const formattedDate = currentTime.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   });
 
   const formattedTime = currentTime.toLocaleTimeString('en-US', {
     hour12: true,
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   });
 
-  // ✅ Navigate back to security default page
-  const handleBackToSecurity = () => {
-    navigate("/Default"); // Security app ka default page
-  };
+  const handleBackToSecurity = () => navigate('/Default');
 
   return (
-    <header className="bg-light py-3 border-bottom shadow-sm">
-      <div className="container d-flex justify-content-between align-items-center">
+    <header
+      className="py-3 shadow-sm"
+      style={{
+        background: `linear-gradient(to right, ${getCurrentAppColors().primary}, ${getCurrentAppColors().secondary})`,
+        borderBottom: `3px solid ${getCurrentAppColors().secondary}`,
+      }}
+    >
+      <div className="container-fluid px-3 d-flex justify-content-between align-items-center">
+        {/* App Logo */}
+        <img src={getCurrentAppLogo()} alt="App Logo" style={{ height: '100px' }} className="rounded" />
 
-        {/* ✅ Dynamic App Logo */}
-        <img
-          src={getCurrentAppLogo()}
-          alt="App Logo"
-          style={{ height: "100px" }}
-          className="rounded"
-        />
-
-        {/* ✅ User Info, Date & Time, Logout */}
+        {/* User Info */}
         <div className="d-flex flex-column align-items-end gap-2">
-          
-          {/* User Info and Date Time */}
           <div className="text-end">
-            {/* ✅ Username */}
-            <div className="fw-bold text-dark fs-6">
-              👤 {username}
-            </div>
-            
-            {/* ✅ Date and Time */}
-            <div className="text-muted small">
+            <div className="fw-bold text-white fs-6">👤 {username}</div>
+            <div className="small" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
               <span className="me-2">📅 {formattedDate}</span>
               <br className="d-sm-none" />
               <span>⏰ {formattedTime}</span>
             </div>
           </div>
 
-          {/* ✅ Buttons */}
           <div className="d-flex gap-2">
-            {/* Show Back to Security button only when outside security app */}
             {isOutsideSecurity && (
               <button
-                className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                className="btn btn-outline-light btn-sm d-flex align-items-center gap-1"
                 onClick={handleBackToSecurity}
               >
-                <span>🔙</span>
-                <span>Back to Security</span>
+                🔙 Back to Security
               </button>
             )}
 
-            <button
-              className="btn btn-outline-danger d-flex align-items-center gap-2"
-              onClick={onLogout}
-            >
-              <span className="fs-5">🚪</span>
-              <span>Logout</span>
+            <button className="btn btn-outline-light d-flex align-items-center gap-2" onClick={onLogout}>
+              🚪 Logout
             </button>
           </div>
         </div>

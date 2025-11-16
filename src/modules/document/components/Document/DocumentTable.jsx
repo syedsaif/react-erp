@@ -10,28 +10,23 @@ import { toast } from "react-toastify";
 export default function DocumentTable({ 
   onDelete, 
   onViewDetails, 
+  onForward, // ✅ NEW: Added callback for forwarding
   onComplete, 
   onStatusUpdate, // ✅ NEW: Added callback from parent
   documents, // ✅ NEW: Receive documents from parent instead of fetching here
   loading // ✅ NEW: Receive loading state from parent
 }) {
   const [filters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    code: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    documentName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    fromUser: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    createdByName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    toUserName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    priorityName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    status: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    documentType: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    global: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    code: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    documentName: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    fromUser: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    createdByName: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    toUserName: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    priorityName: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    status: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    documentType: { value: '', matchMode: FilterMatchMode.CONTAINS },
   });
-
-  // ✅ REMOVED: Local documents state and fetchDocuments
-  // const [documents, setDocuments] = useState([]);
-  // const [loading, setLoading] = useState(false);
-
-  // ✅ REMOVED: useEffect and fetchDocuments since data comes from parent now
 
   const statusTemplate = (rowData) => (
     <span
@@ -132,6 +127,15 @@ export default function DocumentTable({
         }
       />
 
+      {/* Forward Button */}
+      <Button
+        icon="pi pi-send"
+        className="p-button-rounded p-button-warning p-button-sm"
+        onClick={() => onForward(rowData)}
+        tooltip="Forward Document"
+        aria-label={`Forward document ${rowData.documentName}`}
+      />
+
       {/* Delete Button */}
       <Button
         icon="pi pi-trash"
@@ -147,7 +151,7 @@ export default function DocumentTable({
   const LargeFilter = (options) => {
     return (
       <InputText
-        value={options.value}
+        value={options.value || ''}
         onChange={(e) => options.filterApplyCallback(e.target.value)}
         placeholder={options.placeholder}
         aria-label={`Filter by ${options.placeholder}`}
@@ -163,13 +167,15 @@ export default function DocumentTable({
   };
 
   return (
-    <div className="card shadow-sm" style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth: '1200px' }}>
+    <div className="card shadow-sm">
         <DataTable
           value={documents}
           dataKey="id"
           paginator
           rows={5}
+          rowsPerPageOptions={[5, 10, 20, 50]}
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} documents"
           loading={loading}
           stripedRows
           showGridlines
@@ -275,9 +281,6 @@ export default function DocumentTable({
             style={{ width: "220px", textAlign: "center", whiteSpace: "nowrap" }}
           />
         </DataTable>
-      </div>
     </div>
   );
 }
-
-

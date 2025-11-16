@@ -1,20 +1,27 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-//import axios from "axios";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
-import ConfirmModal from "../../../components/common/ConfirmModal";
+
 import DesignationForm from "../components/Designation/DesignationForm";
 import DesignationTable from "../components/Designation/DesignationTable";
 import DesignationView from "../components/Designation/DesignationView";
-import api from '../../../services/apiInterceptor';
+
+import api from "../../../services/apiInterceptor";
+import Modal from "../../../components/common/Modal";
 
 export default function Designation() {
   const [selectedDesignation, setSelectedDesignation] = useState(null);
   const [refreshFlag, setRefreshFlag] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showView, setShowView] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+
+  // 📌 Unified Modal Format (same as Department)
+  const [modalState, setModalState] = useState({
+    show: false,
+    type: "",
+    data: {},
+  });
 
   const reloadTable = () => setRefreshFlag((prev) => !prev);
 
@@ -36,29 +43,63 @@ export default function Designation() {
     setShowView(true);
   };
 
+  // 🗑 Step-1 — Open Delete Confirmation Modal
   const handleDeleteRequest = (designation) => {
-    setSelectedDesignation(designation);
-    setShowConfirm(true);
+    setModalState({
+      show: true,
+      type: "confirm",
+      data: {
+        title: "Confirm Deletion",
+        message: `Are you sure you want to delete designation "${designation.name}"?`,
+        designation,
+      },
+    });
   };
 
-  const handleDelete = async () => {
+  // 🗑 Step-2 — API DELETE CALL
+  const deleteDesignation = async (designation) => {
     try {
-      const id = selectedDesignation.id;
-      const response = await api.delete(`designation/Delete/${id}`);
+      const response = await api.delete(
+        `designation/Delete/${designation.id}`
+      );
+
       if (response.status === 200) {
         toast.success("🗑️ Designation deleted successfully!");
         reloadTable();
+
+        if (selectedDesignation?.id === designation.id) {
+          handleCancel();
+        }
       } else {
         toast.error("❌ Failed to delete designation!");
       }
     } catch (error) {
       console.error("Delete error:", error);
-      toast.error("❌ " + (error.response?.data?.message || "Failed to delete designation."));
-    } finally {
-      setShowConfirm(false);
-      setSelectedDesignation(null);
+      toast.error(
+        "❌ " +
+          (error.response?.data?.message ||
+            "Failed to delete designation.")
+      );
     }
   };
+
+  // 🔥 Step-3 — Handle Confirm (Modal)
+  const handleModalConfirm = async () => {
+    const { type, data } = modalState;
+
+    if (type === "confirm") {
+      await deleteDesignation(data.designation);
+    }
+
+    closeModal();
+  };
+
+  const closeModal = () =>
+    setModalState({
+      show: false,
+      type: "",
+      data: {},
+    });
 
   const handleCancel = () => {
     setShowForm(false);
@@ -75,18 +116,17 @@ export default function Designation() {
   return (
     <div className="container mt-4">
       <Card title="🏢 Designation Management" className="shadow-sm">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="m-0"></h5>
 
-          {!showForm && !showView && (
+        {/* Header Buttons */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          {!showForm && !showView ? (
             <Button
               label="Add New"
               icon="pi pi-plus"
               className="p-button-success"
               onClick={handleAddNew}
             />
-          )}
-          {(showForm || showView) && (
+          ) : (
             <Button
               label="Back to List"
               icon="pi pi-arrow-left"
@@ -96,6 +136,7 @@ export default function Designation() {
           )}
         </div>
 
+        {/* Screens */}
         {showForm ? (
           <DesignationForm
             key={selectedDesignation?.id || "new"}
@@ -104,7 +145,10 @@ export default function Designation() {
             onCancel={handleCancel}
           />
         ) : showView ? (
-          <DesignationView designation={selectedDesignation} onBack={handleCancel} />
+          <DesignationView
+            designation={selectedDesignation}
+            onBack={handleCancel}
+          />
         ) : (
           <DesignationTable
             key={refreshFlag}
@@ -114,16 +158,13 @@ export default function Designation() {
           />
         )}
 
-        <ConfirmModal
-          show={showConfirm}
-          title="Confirm Deletion"
-          message={
-            selectedDesignation
-              ? `Are you sure you want to delete designation "${selectedDesignation.name}"?`
-              : ""
-          }
-          onConfirm={handleDelete}
-          onCancel={() => setShowConfirm(false)}
+        {/* Unified Modal */}
+        <Modal
+          show={modalState.show}
+          type={modalState.type}
+          onCancel={closeModal}
+          onConfirm={handleModalConfirm}
+          {...modalState.data}
         />
       </Card>
     </div>

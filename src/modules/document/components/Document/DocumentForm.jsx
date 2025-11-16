@@ -1,90 +1,60 @@
 // import React, { useRef, useEffect, useState } from "react";
 // import useForm from "../../../security/hooks/useForm";
 // import { validateField } from "../../../../utils/validation";
+// import { MultiSelect } from 'primereact/multiselect';
 // import { toast } from "react-toastify";
-// import api from '../../../../services/apiInterceptor';
+// import { getDocumentTypes, getUsers, getPriorities, saveDocument } from "../../../../APICalls/DocumentFormAPI";
 
 // export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) {
 //   const hasShownValidationToast = useRef(false);
+
+//   // ✅ States
 //   const [documentTypeOptions, setDocumentTypeOptions] = useState([]);
 //   const [userOptions, setUserOptions] = useState([]);
 //   const [priorityOptions, setPriorityOptions] = useState([]);
+//   const [toCCUserOptions, setToCCUserOptions] = useState([]); // ✅ New
+//   const [isSubmitted, setIsSubmitted] = useState(false); // ✅ Track if form has been submitted
 
 //   // ✅ Fetch Document Types
 //   useEffect(() => {
-//     async function fetchDocumentTypes() {
-//       try {
-//         const response = await api.get('DocumentType/GetDropdown');
-        
-//         if (Array.isArray(response.data)) {
-//           setDocumentTypeOptions(response.data);
-//         } 
-//         else if (response.data.dropdown && Array.isArray(response.data.dropdown)) {
-//           setDocumentTypeOptions(response.data.dropdown);
-//         }
-//         else if (response.data.data && Array.isArray(response.data.data)) {
-//           setDocumentTypeOptions(response.data.data);
-//         }
-//         else {
-//           console.warn("Unexpected API format:", response.data);
-//           setDocumentTypeOptions([]);
-//         }
-//       } catch (error) {
-//         console.error("❌ Failed to load document types", error);
-//         toast.error("❌ Failed to load document types");
-//         setDocumentTypeOptions([]);
-//       }
-//     }
-//     fetchDocumentTypes();
+//     const fetchAndSetDocumentTypes = async () => {
+//       const data = await getDocumentTypes();
+//       setDocumentTypeOptions(data);
+//     };
+//     fetchAndSetDocumentTypes();
 //   }, []);
 
-//   // ✅ Fetch Users
+//   // ✅ Fetch Users (for Assignee)
 //   useEffect(() => {
-//     async function fetchUsers() {
-//       try {
-//         const response = await api.get('User/GetDropdown');
-        
-//         if (Array.isArray(response.data)) {
-//           setUserOptions(response.data);
-//         } 
-//         else if (response.data.dropdown && Array.isArray(response.data.dropdown)) {
-//           setUserOptions(response.data.dropdown);
-//         }
-//         else if (response.data.data && Array.isArray(response.data.data)) {
-//           setUserOptions(response.data.data);
-//         }
-//         else {
-//           setUserOptions([]);
-//         }
-//       } catch (error) {
-//         console.error("❌ Failed to load users", error);
-//         toast.error("❌ Failed to load users");
-//         setUserOptions([]);
-//       }
-//     }
-//     fetchUsers();
+//     const fetchAndSetUsers = async () => {
+//       const data = await getUsers();
+//       setUserOptions(data);
+//     };
+//     fetchAndSetUsers();
+    
 //   }, []);
 
 //   // ✅ Fetch Priorities
 //   useEffect(() => {
-//   async function fetchPriorities() {
-//     try {
-//       const response = await api.get('Priority/GetDropdown');
-      
-//       if (response.data.dropdown && Array.isArray(response.data.dropdown)) {
-//         setPriorityOptions(response.data.dropdown);
-//       } else {
-//         setPriorityOptions([]);
-//       }
-//     } catch (error) {
-//       console.error("❌ Failed to load priorities", error);
-//       toast.error("❌ Failed to load priorities");
-//       setPriorityOptions([]);
-//     }
-//   }
-//   fetchPriorities();
-// }, []);
+//     const fetchAndSetPriorities = async () => {
+//       const data = await getPriorities();
+//       setPriorityOptions(data);
+//     };
+//     fetchAndSetPriorities();
+    
+//   }, []);
 
+//   // ✅ Fetch CC Users (for To CC User dropdown)
+//   useEffect(() => {
+//     const fetchAndSetCCUsers = async () => {
+//       const data = await getUsers(); // Reusing the getUsers function
+//       setToCCUserOptions(data);
+//     };
+//     fetchAndSetCCUsers();
+    
+//   }, []);
+
+//   // ✅ Validation rules (no validation for CC users)
 //   const validate = (data) => {
 //     let errors = {};
 
@@ -131,6 +101,7 @@
 //     return errors;
 //   };
 
+//   // ✅ useForm hook
 //   const { formData, errors, handleChange, handleSubmit, loading } = useForm(
 //     {
 //       id: initialData?.id ?? 0,
@@ -149,120 +120,109 @@
 //     validate,
 //     async (data) => {
 //       try {
+//         // Prepare form data for submission
 //         const formDataToSend = new FormData();
-
 //         formDataToSend.append("Id", data.id || 0);
 //         formDataToSend.append("Code", "DOC-90");
 //         formDataToSend.append("DocumentName", data.documentName || "");
 //         formDataToSend.append("FromUser", data.fromUser || "");
-//         formDataToSend.append("ToUserId", data.assignee || ""); // ✅ Use selected assignee
+//         formDataToSend.append("ToUserId", data.assignee || "");
 //         formDataToSend.append("ToCcuser", data.selectedEmails || "");
-//         formDataToSend.append("PriorityId", data.priority || ""); // ✅ Use selected priority
+//         formDataToSend.append("PriorityId", data.priority || "");
 //         formDataToSend.append("EmailAlert", data.emailAlert);
 //         formDataToSend.append("SmsAlert", data.notificationAlert);
 //         formDataToSend.append("Remarks", data.remarks || "");
 //         formDataToSend.append("CreatedBy", 1);
 //         formDataToSend.append("DocumentTypeId", data.documentType || "");
-
 //         if (data.fileAttached && typeof data.fileAttached !== "string") {
 //           formDataToSend.append("File", data.fileAttached);
 //         }
 
-//         const response = await api.post("document/Insert", formDataToSend, {
-//           headers: {
-//             "Content-Type": "multipart/form-data",
-//           },
-//         });
-
+//         // Call the centralized API function
+//         const response = await saveDocument(formDataToSend);
 //         toast.success(response.data.message || "✅ Document created successfully!");
+        
 //         if (onSuccess) onSuccess();
 //         hasShownValidationToast.current = false;
 //       } catch (error) {
-//         console.error("❌ Document save error:", error);
-//         const serverMsg = error.response?.data?.message || error.response?.data?.Message;
-//         toast.error(serverMsg ? "❌ " + serverMsg : "🚨 Internal Server Error. Please try again.");
+//         // Error is already handled and toasted in the API function
+//         console.error("Form submission failed in DocumentForm:", error);
 //       }
 //     }
 //   );
 
-//   const shownErrors = React.useRef(new Set());
-  
-//   React.useEffect(() => {
-//     Object.entries(errors).forEach(([field, message]) => {
-//       if (message && !shownErrors.current.has(field)) {
-//         toast.error(message);
-//         shownErrors.current.add(field);
-//       }
-//     });
-
-//     if (Object.keys(errors).length === 0) {
-//       shownErrors.current.clear();
-//     }
-//   }, [errors]);
-
+//   // ✅ File change handler
 //   const handleFileChange = (e) => {
 //     const file = e.target.files[0];
 //     if (file) {
-//       handleChange({
-//         target: {
-//           name: "fileAttached",
-//           value: file
-//         }
-//       });
+//       handleChange({ target: { name: "fileAttached", value: file } });
 //     }
 //   };
 
+//   // ✅ To CC User change handler (multiple + comma-separated)
 //   const handleToCCUserChange = (e) => {
-//     const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
-//     handleChange({
-//       target: {
-//         name: "toCCUser",
-//         value: selectedOptions
-//       }
-//     });
+//     const selectedUsers = e.value; // `e.value` is an array of selected user IDs
+//     handleChange({ target: { name: "toCCUser", value: selectedUsers } });
+
+//     // Find the full user objects for the selected IDs to get their emails
+//     const selectedUserEmails = toCCUserOptions
+//       .filter(user => selectedUsers.includes(user.id))
+//       .map(user => user.email || user.userName || user.fullName)
+//       .join(',');
+
+//     handleChange({ target: { name: "selectedEmails", value: selectedUserEmails } });
 //   };
 
-//   //✅ Remove hardcoded options - now using API data
-//   const toCCUserOptions = [
-//     { value: "a@a.com", label: "John (a@a.com)" },
-//     { value: "b@b.com", label: "Jane (b@b.com)" },
-//   ];
+//   // ✅ New handleSubmit wrapper to show toasts on every click
+//   const handleFormSubmit = (e) => {
+//     setIsSubmitted(true); // Mark form as submitted to show red borders
+//     const validationErrors = validate(formData); // Run validation
+//     if (Object.keys(validationErrors).length > 0) { // Check if there are errors
+//       e.preventDefault(); // Prevent form submission if validation fails
+//       // Show a toast for each validation error
+//       Object.values(validationErrors).forEach(errorMessage => {
+//         toast.error(errorMessage);
+//       });
+//     }
+//     handleSubmit(e); // Always call the hook's handleSubmit to update the 'errors' state for UI
+//   };
 
 //   return (
-//     <form onSubmit={handleSubmit} noValidate>
-//       <div className="row g-3">
+//     <form onSubmit={handleFormSubmit} noValidate>
+//       <div className="row g-3 align-items-center">
+
 //         {/* Document Name */}
 //         <div className="col-md-6">
-//           <label>Document Name</label>
+//           <label>Document Name <span className="text-danger">*</span></label>
 //           <input
 //             type="text"
 //             name="documentName"
 //             value={formData.documentName}
 //             onChange={handleChange}
-//             className={`form-control ${errors.documentName ? "is-invalid" : ""}`}
+//             className={`form-control ${isSubmitted && errors.documentName ? "is-invalid" : ""}`}
 //           />
 //         </div>
 
 //         {/* From User */}
 //         <div className="col-md-6">
-//           <label>From User</label>
+//           <label>From User <span className="text-danger">*</span></label>
 //           <input
 //             type="text"
 //             name="fromUser"
 //             value={formData.fromUser}
 //             onChange={handleChange}
-//             className={`form-control ${errors.fromUser ? "is-invalid" : ""}`}
+//             className={`form-control ${isSubmitted && errors.fromUser ? "is-invalid" : ""}`}
 //           />
 //         </div>
 
-//         {/* ✅ Assignee - Now from API */}
+//         {/* Assignee */}
 //         <div className="col-md-6">
-//           <label>Assignee</label>
+//           <label>Assignee <span className="text-danger">*</span></label>
 //           <select
 //             name="assignee"
 //             value={formData.assignee}
 //             onChange={handleChange}
-//             className={`form-control ${errors.assignee ? "is-invalid" : ""}`}
+//             className={`form-control ${isSubmitted && errors.assignee ? "is-invalid" : ""}`}
 //           >
 //             <option value="">Select Assignee</option>
 //             {userOptions.map(user => (
@@ -273,60 +233,44 @@
 //           </select>
 //         </div>
 
-//         {/* ✅ Priority - Now from API */}
+//         {/* Priority */}
 //         <div className="col-md-6">
-//           <label>Priority</label>
+//           <label>Priority <span className="text-danger">*</span></label>
 //           <select
 //             name="priority"
 //             value={formData.priority}
 //             onChange={handleChange}
-//             className={`form-control ${errors.priority ? "is-invalid" : ""}`}
+//             className={`form-control ${isSubmitted && errors.priority ? "is-invalid" : ""}`}
 //           >
 //             <option value="">Select Priority</option>
-//               {priorityOptions.map(p => (
-//             <option key={p.id} value={p.id}>
-//               {p.Priority}
-//             </option>
-//             ))}
-//           </select>
-//         </div>
-
-//         {/* CC Users (Multi select) */}
-//         <div className="col-md-6">
-//           <label>To CC User</label>
-//           <select
-//             name="toCCUser"
-//             multiple
-//             value={formData.toCCUser}
-//             onChange={handleToCCUserChange}
-//             className="form-control"
-//             size="4"
-//           >
-//             {toCCUserOptions.map(opt => (
-//               <option key={opt.value} value={opt.value}>{opt.label}</option>
-//             ))}
-//           </select>
-//         </div>
-
-//         {/* ✅ Document Type - Now from API */}
-//         <div className="col-md-6">
-//           <label>Document Type</label>
-//           <select
-//             name="documentType"
-//             value={formData.documentType}
-//             onChange={handleChange}
-//             className={`form-control ${errors.documentType ? "is-invalid" : ""}`}
-//           >
-//             <option value="">Select Document Type</option>
-//             {documentTypeOptions.map(docType => (
-//               <option key={docType.id} value={docType.id}>
-//                 {docType.documentType || docType.type || docType.name}
+//             {priorityOptions.map(p => (
+//               <option key={p.id} value={p.id}>
+//                 {p.Priority}
 //               </option>
 //             ))}
 //           </select>
 //         </div>
 
-//         {/* Selected Emails (comma-separated) */}
+//         {/* To CC User (multi-select, from API) */}
+//         <div className="col-md-6">
+//           <label>To CC User</label>
+//           <MultiSelect
+//             value={formData.toCCUser}
+//             options={toCCUserOptions}
+//             onChange={handleToCCUserChange}
+//             optionLabel="fullName" // The property to display in the dropdown
+//             optionValue="id"       // The property to use as the value for each option
+//             placeholder="Search and select users"
+//             filter
+//             display="chip" // Shows selected items as chips
+//             className="w-100"
+//             itemTemplate={(option) => (
+//               <div>{option.fullName} ({option.email})</div>
+//             )}
+//           />
+//         </div>
+
+//         {/* Selected Emails */}
 //         <div className="col-md-6">
 //           <label>Selected Emails</label>
 //           <input
@@ -337,6 +281,24 @@
 //             className="form-control"
 //             placeholder="email1@example.com,email2@example.com"
 //           />
+//         </div>
+
+//         {/* Document Type */}
+//         <div className="col-md-6">
+//           <label>Document Type <span className="text-danger">*</span></label>
+//           <select
+//             name="documentType"
+//             value={formData.documentType}
+//             onChange={handleChange}
+//             className={`form-control ${isSubmitted && errors.documentType ? "is-invalid" : ""}`}
+//           >
+//             <option value="">Select Document Type</option>
+//             {documentTypeOptions.map(docType => (
+//               <option key={docType.id} value={docType.id}>
+//                 {docType.documentType || docType.type || docType.name}
+//               </option>
+//             ))}
+//           </select>
 //         </div>
 
 //         {/* Alerts */}
@@ -396,21 +358,12 @@
 //         </div>
 //       </div>
 
-//       {/* Submit / Cancel */}
+//       {/* Buttons */}
 //       <div className="mt-4">
-//         <button
-//           type="submit"
-//           className="btn btn-primary"
-//           disabled={loading}
-//         >
+//         <button type="submit" className="btn btn-primary" disabled={loading}>
 //           💾 {loading ? "Saving..." : formData.id ? "Update" : "Save"}
 //         </button>
-//         <button
-//           type="button"
-//           className="btn btn-secondary ms-2"
-//           onClick={onCancel}
-//           disabled={loading}
-//         >
+//         <button type="button" className="btn btn-secondary ms-2" onClick={onCancel} disabled={loading}>
 //           Cancel
 //         </button>
 //       </div>
@@ -418,12 +371,12 @@
 //   );
 // }
 
-
 import React, { useRef, useEffect, useState } from "react";
 import useForm from "../../../security/hooks/useForm";
 import { validateField } from "../../../../utils/validation";
+import { MultiSelect } from 'primereact/multiselect';
 import { toast } from "react-toastify";
-import api from '../../../../services/apiInterceptor';
+import { getDocumentTypes, getUsers, getPriorities, saveDocument } from "../../../../APICalls/DocumentFormAPI";
 
 export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) {
   const hasShownValidationToast = useRef(false);
@@ -432,95 +385,35 @@ export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) 
   const [documentTypeOptions, setDocumentTypeOptions] = useState([]);
   const [userOptions, setUserOptions] = useState([]);
   const [priorityOptions, setPriorityOptions] = useState([]);
-  const [toCCUserOptions, setToCCUserOptions] = useState([]); // ✅ New
+  const [toCCUserOptions, setToCCUserOptions] = useState([]); // CC Users
+  const [isSubmitted, setIsSubmitted] = useState(false); // Track form submission
 
   // ✅ Fetch Document Types
   useEffect(() => {
-    async function fetchDocumentTypes() {
-      try {
-        const response = await api.get('DocumentType/GetDropdown');
-        if (Array.isArray(response.data)) {
-          setDocumentTypeOptions(response.data);
-        } else if (response.data.dropdown && Array.isArray(response.data.dropdown)) {
-          setDocumentTypeOptions(response.data.dropdown);
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          setDocumentTypeOptions(response.data.data);
-        } else {
-          console.warn("Unexpected API format:", response.data);
-          setDocumentTypeOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Failed to load document types", error);
-        toast.error("❌ Failed to load document types");
-        setDocumentTypeOptions([]);
-      }
-    }
-    fetchDocumentTypes();
+    const fetchAndSetDocumentTypes = async () => {
+      const data = await getDocumentTypes();
+      setDocumentTypeOptions(data);
+    };
+    fetchAndSetDocumentTypes();
   }, []);
 
   // ✅ Fetch Users (for Assignee)
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const response = await api.get('User/GetDropdown');
-        if (Array.isArray(response.data)) {
-          setUserOptions(response.data);
-        } else if (response.data.dropdown && Array.isArray(response.data.dropdown)) {
-          setUserOptions(response.data.dropdown);
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          setUserOptions(response.data.data);
-        } else {
-          setUserOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Failed to load users", error);
-        toast.error("❌ Failed to load users");
-        setUserOptions([]);
-      }
-    }
-    fetchUsers();
+    const fetchAndSetUsers = async () => {
+      const data = await getUsers();
+      setUserOptions(data);
+      setToCCUserOptions(data); // Same users for CC dropdown
+    };
+    fetchAndSetUsers();
   }, []);
 
   // ✅ Fetch Priorities
   useEffect(() => {
-    async function fetchPriorities() {
-      try {
-        const response = await api.get('Priority/GetDropdown');
-        if (response.data.dropdown && Array.isArray(response.data.dropdown)) {
-          setPriorityOptions(response.data.dropdown);
-        } else {
-          setPriorityOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Failed to load priorities", error);
-        toast.error("❌ Failed to load priorities");
-        setPriorityOptions([]);
-      }
-    }
-    fetchPriorities();
-  }, []);
-
-  // ✅ Fetch CC Users (for To CC User dropdown)
-  useEffect(() => {
-    async function fetchCCUsers() {
-      try {
-        const response = await api.get('User/GetDropdown');
-        if (Array.isArray(response.data)) {
-          setToCCUserOptions(response.data);
-        } else if (response.data.dropdown && Array.isArray(response.data.dropdown)) {
-          setToCCUserOptions(response.data.dropdown);
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          setToCCUserOptions(response.data.data);
-        } else {
-          setToCCUserOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Failed to load CC users", error);
-        toast.error("❌ Failed to load CC users");
-        setToCCUserOptions([]);
-      }
-    }
-    fetchCCUsers();
+    const fetchAndSetPriorities = async () => {
+      const data = await getPriorities();
+      setPriorityOptions(data);
+    };
+    fetchAndSetPriorities();
   }, []);
 
   // ✅ Validation rules (no validation for CC users)
@@ -578,8 +471,7 @@ export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) 
       fromUser: initialData?.fromUser || "",
       assignee: initialData?.assignee || "",
       priority: initialData?.priority || "",
-      toCCUser: initialData?.toCCUser || [],
-      selectedEmails: initialData?.selectedEmails || "",
+      toCCUser: initialData?.toCCUser || [], // ✅ Only IDs
       emailAlert: initialData?.emailAlert || false,
       notificationAlert: initialData?.notificationAlert || false,
       fileAttached: null,
@@ -589,54 +481,34 @@ export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) 
     validate,
     async (data) => {
       try {
+        // Prepare form data for submission
         const formDataToSend = new FormData();
-
         formDataToSend.append("Id", data.id || 0);
         formDataToSend.append("Code", "DOC-90");
         formDataToSend.append("DocumentName", data.documentName || "");
         formDataToSend.append("FromUser", data.fromUser || "");
         formDataToSend.append("ToUserId", data.assignee || "");
-        formDataToSend.append("ToCcuser", data.selectedEmails || "");
+        formDataToSend.append("ToCcuser", data.toCCUser || ""); // Only send IDs
         formDataToSend.append("PriorityId", data.priority || "");
         formDataToSend.append("EmailAlert", data.emailAlert);
         formDataToSend.append("SmsAlert", data.notificationAlert);
         formDataToSend.append("Remarks", data.remarks || "");
         formDataToSend.append("CreatedBy", 1);
         formDataToSend.append("DocumentTypeId", data.documentType || "");
-
         if (data.fileAttached && typeof data.fileAttached !== "string") {
           formDataToSend.append("File", data.fileAttached);
         }
 
-        const response = await api.post("document/Insert", formDataToSend, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
-        toast.success(response.data.message || "✅ Document created successfully!");
+        const response = await saveDocument(formDataToSend);
+        toast.success(response.data.message || "✅ Document saved successfully!");
+        
         if (onSuccess) onSuccess();
         hasShownValidationToast.current = false;
       } catch (error) {
-        console.error("❌ Document save error:", error);
-        const serverMsg = error.response?.data?.message || error.response?.data?.Message;
-        toast.error(serverMsg ? "❌ " + serverMsg : "🚨 Internal Server Error. Please try again.");
+        console.error("Form submission failed in DocumentForm:", error);
       }
     }
   );
-
-  // ✅ Show validation errors once
-  const shownErrors = React.useRef(new Set());
-  React.useEffect(() => {
-    Object.entries(errors).forEach(([field, message]) => {
-      if (message && !shownErrors.current.has(field)) {
-        toast.error(message);
-        shownErrors.current.add(field);
-      }
-    });
-
-    if (Object.keys(errors).length === 0) {
-      shownErrors.current.clear();
-    }
-  }, [errors]);
 
   // ✅ File change handler
   const handleFileChange = (e) => {
@@ -646,49 +518,59 @@ export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) 
     }
   };
 
-  // ✅ To CC User change handler (multiple + comma-separated)
+  // ✅ To CC User change handler (just IDs, no emails field)
   const handleToCCUserChange = (e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
-    handleChange({ target: { name: "toCCUser", value: selectedOptions } });
-    handleChange({ target: { name: "selectedEmails", value: selectedOptions.join(",") } });
+    const selectedUsers = e.value; // array of selected user IDs
+    handleChange({ target: { name: "toCCUser", value: selectedUsers } });
+  };
+
+  // ✅ Form submit wrapper
+  const handleFormSubmit = (e) => {
+    setIsSubmitted(true);
+    const validationErrors = validate(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      e.preventDefault();
+      Object.values(validationErrors).forEach(errorMessage => toast.error(errorMessage));
+    }
+    handleSubmit(e);
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      <div className="row g-3">
+    <form onSubmit={handleFormSubmit} noValidate>
+      <div className="row g-3 align-items-center">
 
         {/* Document Name */}
         <div className="col-md-6">
-          <label>Document Name</label>
+          <label>Document Name <span className="text-danger">*</span></label>
           <input
             type="text"
             name="documentName"
             value={formData.documentName}
             onChange={handleChange}
-            className={`form-control ${errors.documentName ? "is-invalid" : ""}`}
+            className={`form-control ${isSubmitted && errors.documentName ? "is-invalid" : ""}`}
           />
         </div>
 
         {/* From User */}
         <div className="col-md-6">
-          <label>From User</label>
+          <label>From User <span className="text-danger">*</span></label>
           <input
             type="text"
             name="fromUser"
             value={formData.fromUser}
             onChange={handleChange}
-            className={`form-control ${errors.fromUser ? "is-invalid" : ""}`}
+            className={`form-control ${isSubmitted && errors.fromUser ? "is-invalid" : ""}`}
           />
         </div>
 
         {/* Assignee */}
         <div className="col-md-6">
-          <label>Assignee</label>
+          <label>Assignee <span className="text-danger">*</span></label>
           <select
             name="assignee"
             value={formData.assignee}
             onChange={handleChange}
-            className={`form-control ${errors.assignee ? "is-invalid" : ""}`}
+            className={`form-control ${isSubmitted && errors.assignee ? "is-invalid" : ""}`}
           >
             <option value="">Select Assignee</option>
             {userOptions.map(user => (
@@ -701,12 +583,12 @@ export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) 
 
         {/* Priority */}
         <div className="col-md-6">
-          <label>Priority</label>
+          <label>Priority <span className="text-danger">*</span></label>
           <select
             name="priority"
             value={formData.priority}
             onChange={handleChange}
-            className={`form-control ${errors.priority ? "is-invalid" : ""}`}
+            className={`form-control ${isSubmitted && errors.priority ? "is-invalid" : ""}`}
           >
             <option value="">Select Priority</option>
             {priorityOptions.map(p => (
@@ -717,51 +599,49 @@ export default function DocumentForm({ initialData = {}, onSuccess, onCancel }) 
           </select>
         </div>
 
-        {/* To CC User (multi-select, from API) */}
+        {/* To CC User */}
         <div className="col-md-6">
           <label>To CC User</label>
-          <select
-            name="toCCUser"
-            multiple
+          {/* <MultiSelect
             value={formData.toCCUser}
+            options={toCCUserOptions}
             onChange={handleToCCUserChange}
-            className="form-control"
-            size="4"
-          >
-            {toCCUserOptions.map(user => (
-              <option key={user.id} value={user.email || user.userName || user.fullName}>
-                {user.fullName || user.name || user.userName}
-              </option>
-              // ✅ NEW - User ID bhejein
-              /*{ {toCCUserOptions.map(user => (
-              <option key={user.id} value={user.id}>
-                {user.fullName || user.name || user.userName}
-              </option> }*/
-                ))}
-          </select>
-        </div>
-
-        {/* Selected Emails */}
-        <div className="col-md-6">
-          <label>Selected Emails</label>
-          <input
-            type="text"
-            name="selectedEmails"
-            value={formData.selectedEmails}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="email1@example.com,email2@example.com"
+            optionLabel="fullName"
+            optionValue="id"
+            placeholder="Search and select users"
+            filter
+            display="chip"
+            className="w-100"
+            itemTemplate={(option) => (
+              <div>{option.fullName} ({option.email})</div>
+            )}
+          /> */}
+          <MultiSelect
+            value={formData.toCCUser}
+            options={toCCUserOptions}
+            onChange={handleToCCUserChange}
+            optionLabel="fullName"
+            optionValue="id"
+            placeholder="Search and select users"
+            filter
+            display="chip"
+            className="w-100 multiselect-auto-height"
+            appendTo={document.body}
+            itemTemplate={(option) => (
+                <div>{option.fullName} ({option.email})</div>
+              )}
           />
+
         </div>
 
         {/* Document Type */}
         <div className="col-md-6">
-          <label>Document Type</label>
+          <label>Document Type <span className="text-danger">*</span></label>
           <select
             name="documentType"
             value={formData.documentType}
             onChange={handleChange}
-            className={`form-control ${errors.documentType ? "is-invalid" : ""}`}
+            className={`form-control ${isSubmitted && errors.documentType ? "is-invalid" : ""}`}
           >
             <option value="">Select Document Type</option>
             {documentTypeOptions.map(docType => (

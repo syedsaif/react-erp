@@ -2,20 +2,24 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
-import ConfirmModal from "../../../components/common/ConfirmModal";
+
 import EducationForm from "../components/Education/EducationForm";
 import EducationTable from "../components/Education/EducationTable";
 import EducationView from "../components/Education/EducationView";
+
 import api from '../../../services/apiInterceptor';
+import Modal from "../../../components/common/Modal";
 
 export default function Education() {
   const [selectedEducation, setSelectedEducation] = useState(null);
   const [refreshFlag, setRefreshFlag] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showView, setShowView] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false); // ✅ new
 
-  const reloadTable = () => setRefreshFlag((prev) => !prev);
+  // ✅ Unified modal state
+  const [modalState, setModalState] = useState({ show: false, type: null, data: {} });
+
+  const reloadTable = () => setRefreshFlag(prev => !prev);
 
   const handleAddNew = () => {
     setSelectedEducation(null);
@@ -35,20 +39,36 @@ export default function Education() {
     setShowView(true);
   };
 
-  // 🗑️ Open confirm modal
+  // 🗑 Open confirm modal
   const handleDeleteRequest = (education) => {
-    setSelectedEducation(education);
-    setShowConfirm(true);
+    setModalState({
+      show: true,
+      type: 'confirm',
+      data: {
+        title: 'Confirm Deletion',
+        message: `Are you sure you want to delete education "${education.name}"?`,
+        item: education,
+      }
+    });
   };
 
-  // 🗑️ Actual delete
+  // 🗑 Actual delete call
   const handleDelete = async () => {
+    const itemToDelete = modalState.data.item;
+    if (!itemToDelete) {
+      toast.error("No education selected for deletion.");
+      handleModalCancel();
+      return;
+    }
+
     try {
-      const id = selectedEducation.id;
-      const response = await api.delete(`education/Delete/${id}`);
+      const response = await api.delete(`education/Delete/${itemToDelete.id}`);
       if (response.status === 200) {
         toast.success("🗑️ Education deleted successfully!");
         reloadTable();
+        if (selectedEducation?.id === itemToDelete.id) {
+          handleCancel();
+        }
       } else {
         toast.error("❌ Failed to delete education!");
       }
@@ -56,8 +76,7 @@ export default function Education() {
       console.error("Delete error:", error);
       toast.error("❌ " + (error.response?.data?.message || "Failed to delete education."));
     } finally {
-      setShowConfirm(false);
-      setSelectedEducation(null);
+      handleModalCancel();
     }
   };
 
@@ -68,28 +87,34 @@ export default function Education() {
   };
 
   const handleSuccess = () => {
-    //toast.success("✅ Education saved successfully!");
     setShowForm(false);
     setSelectedEducation(null);
     reloadTable();
   };
 
+  // Modal handlers
+  const handleModalCancel = () => setModalState({ show: false, type: null, data: {} });
+
+  const handleModalConfirm = () => {
+    if (modalState.type === 'confirm') {
+      handleDelete();
+    }
+  };
+
   return (
     <div className="container mt-4">
       <Card title="🏫 Education Management" className="shadow-sm">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="m-0">
-          </h5>
 
-          {!showForm && !showView && (
+        {/* Header Buttons */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          {!showForm && !showView ? (
             <Button
               label="Add New"
               icon="pi pi-plus"
               className="p-button-success"
               onClick={handleAddNew}
             />
-          )}
-          {(showForm || showView) && (
+          ) : (
             <Button
               label="Back to List"
               icon="pi pi-arrow-left"
@@ -99,6 +124,7 @@ export default function Education() {
           )}
         </div>
 
+        {/* Screens */}
         {showForm ? (
           <EducationForm
             key={selectedEducation?.id || "new"}
@@ -117,17 +143,14 @@ export default function Education() {
           />
         )}
 
-        {/* ✅ Confirm Modal render */}
-        <ConfirmModal
-          show={showConfirm}
-          title="Confirm Deletion"
-          message={
-            selectedEducation
-              ? `Are you sure you want to delete education "${selectedEducation.name}"?`
-              : ""
-          }
-          onConfirm={handleDelete}
-          onCancel={() => setShowConfirm(false)}
+        {/* 🔥 Unified Modal */}
+        <Modal
+          show={modalState.show}
+          type={modalState.type}
+          title={modalState.data.title}
+          message={modalState.data.message}
+          onCancel={handleModalCancel}
+          onConfirm={handleModalConfirm}
         />
       </Card>
     </div>

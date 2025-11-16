@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
-import ConfirmModal from "../../../components/common/ConfirmModal";
-import CompletedModal from "../../../components/common/CompletedModal";
+import Modal from "../../../components/common/Modal";
 import DocumentForm from "../../document/components/Document/DocumentForm";
 import DocumentTable from "../../document/components/Document/DocumentTable";
 import DocumentView from "../../document/components/Document/DocumentView";
@@ -15,9 +14,8 @@ export default function Document() {
   const [selectedDocForwards, setSelectedDocForwards] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [showView, setShowView] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [modalState, setModalState] = useState({ show: false, type: null, data: {} });
 
   // Fetch all documents
   const fetchDocuments = async () => {
@@ -118,22 +116,27 @@ export default function Document() {
 
   // ✅ Open complete modal
   const handleComplete = (doc) => {
-    setSelectedDoc(doc);
-    setShowCompletedModal(true);
+    setModalState({
+      show: true,
+      type: 'complete',
+      data: {
+        title: '✅ Mark as Completed',
+        document: doc,
+      }
+    });
   };
 
   // ✅ Confirm completion
-  const handleCompletionConfirm = async (completionData, e) => {
-    e?.preventDefault(); // Prevent form submit from refreshing page
-
-    if (!selectedDoc) {
+  const handleCompletionConfirm = async (completionData) => {
+    const docToComplete = modalState.data.document;
+    if (!docToComplete) {
       toast.error("No document selected for completion.");
       return;
     }
 
     try {
       const data = new FormData();
-      data.append("Id", selectedDoc.id);
+      data.append("Id", docToComplete.id);
       data.append("Remarks", completionData.remarks || "");
       if (completionData.file) {
         data.append("File", completionData.file);
@@ -144,13 +147,13 @@ export default function Document() {
       });
 
       if (response.status === 200) {
-        toast.success(`✅ Document "${selectedDoc.documentName}" marked as completed!`);
+        toast.success(`✅ Document "${docToComplete.documentName}" marked as completed!`);
 
         // ✅ Optimistic UI update: update documents state to mark completed
         setDocuments(prevDocs =>
           Array.isArray(prevDocs)
             ? prevDocs.map(d =>
-                d.id === selectedDoc.id
+                d.id === docToComplete.id
                   ? { ...d, status: "Completed", isViewed: true } // button disable & viewed
                   : d
               )
@@ -158,9 +161,7 @@ export default function Document() {
         );
 
         // ✅ Close modal & reset selection
-        setShowCompletedModal(false);
-        setSelectedDoc(null);
-        setSelectedDocForwards([]);
+        handleModalCancel();
       } else {
         toast.error("❌ Failed to mark document as completed!");
       }
@@ -170,29 +171,79 @@ export default function Document() {
     }
   };
 
-  // ✅ Close completed modal manually
-  const handleCloseCompletedModal = () => {
-    setShowCompletedModal(false);
-    setSelectedDoc(null);
-    setSelectedDocForwards([]);
+  // Open forward modal
+  const handleForwardRequest = (doc) => {
+    setModalState({
+      show: true,
+      type: 'forward',
+      data: {
+        title: 'Forward Document',
+        document: doc,
+      }
+    });
   };
 
-  // Open delete confirm modal
-  const handleDeleteRequest = (doc) => {
-    setSelectedDoc(doc);
-    setShowConfirm(true);
-  };
-
-  // Delete document
-  const handleDelete = async () => {
-    if (!selectedDoc) {
-      toast.error("No document selected for deletion.");
-      setShowConfirm(false);
+  // Confirm forward
+  const handleForwardConfirm = async (forwardData) => {
+    const docToForward = modalState.data.document;
+    if (!docToForward) {
+      toast.error("No document selected for forwarding.");
       return;
     }
 
     try {
-      const id = selectedDoc.id;
+      const data = new FormData();
+      data.append("Id", docToForward.id);
+      data.append("ToUserId", forwardData.assignee);
+      data.append("PriorityId", forwardData.priority);
+      data.append("ToCcuser", forwardData.toCCUser.join(','));
+      data.append("EmailAlert", forwardData.emailAlert);
+      data.append("SmsAlert", forwardData.notificationAlert);
+      data.append("Remarks", forwardData.remarks || "");
+      // Assuming CreatedBy is handled by the backend or a default value is needed
+      data.append("CreatedBy", 1); 
+
+      const response = await api.post('document/Forward', data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.status === 200) {
+        toast.success(`✅ Document "${docToForward.documentName}" forwarded successfully!`);
+        fetchDocuments(); // Refresh the list to show status change
+        handleModalCancel();
+      } else {
+        toast.error("❌ Failed to forward document!");
+      }
+    } catch (error) {
+      console.error("Forwarding error:", error);
+      toast.error("❌ " + (error.response?.data?.message || "Failed to forward document."));
+    }
+  };
+
+  // Open delete confirm modal
+  const handleDeleteRequest = (doc) => {
+    setModalState({
+      show: true,
+      type: 'confirm',
+      data: {
+        title: 'Confirm Deletion',
+        message: `Are you sure you want to delete document "${doc.documentName}"?`,
+        document: doc, // Store the doc here for the confirm handler
+      }
+    });
+  };
+
+  // Delete document
+  const handleDelete = async () => {
+    const docToDelete = modalState.data.document;
+    if (!docToDelete) {
+      toast.error("No document selected for deletion.");
+      handleModalCancel();
+      return;
+    }
+
+    try {
+      const id = docToDelete.id;
       const response = await api.delete(`document/Delete/${id}`);
       if (response.status === 200) {
         toast.success("🗑️ Document deleted successfully!");
@@ -206,9 +257,7 @@ export default function Document() {
       console.error("Delete error:", error);
       toast.error("❌ " + (error.response?.data?.message || "Failed to delete document."));
     } finally {
-      setShowConfirm(false);
-      setSelectedDoc(null);
-      setSelectedDocForwards([]);
+      handleModalCancel();
     }
   };
 
@@ -228,9 +277,44 @@ export default function Document() {
     fetchDocuments();  // reload fresh list
   };
 
+  // --- Unified Modal Handlers ---
+  const handleModalCancel = () => {
+    setModalState({ show: false, type: null, data: {} });
+  };
+
+  const handleModalConfirm = (formData) => {
+    if (modalState.type === 'confirm') {
+      handleDelete();
+    } else if (modalState.type === 'complete') {
+      handleCompletionConfirm(formData);
+    } else if (modalState.type === 'forward') {
+      handleForwardConfirm(formData);
+    }
+    // Add other modal type confirmations here if needed
+    // The specific handlers (handleDelete, handleCompletionConfirm) are responsible for closing the modal on success.
+  };
+
   return (
     <div className="container mt-4">
-      <Card title="📄 Document Management" className="shadow-sm">
+      <Card 
+        header={
+          <div style={{
+            background: 'linear-gradient(90deg, #0d47a1, #1976d2, #42a5f5)',
+            color: '#ffffff',
+            padding: '1.25rem',
+            borderTopLeftRadius: '6px',
+            borderTopRightRadius: '6px',
+            borderBottom: '1px solid #dee2e6'
+          }}>
+            <h4 className="m-0">
+              <i className="pi pi-file-o me-2"></i>
+              Document Management
+            </h4>
+          </div>
+        } 
+        className="shadow-sm"
+        pt={{ content: { className: 'p-0' } }} // Removes default padding from card content
+      >
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5 className="m-0"></h5>
 
@@ -252,6 +336,7 @@ export default function Document() {
           )}
         </div>
 
+        <div className="p-3">
         {showForm ? (
           <DocumentForm
             key={selectedDoc?.id || "new"}
@@ -274,28 +359,22 @@ export default function Document() {
             onView={handleView} // ✅ Updated handleView function pass
             onDelete={handleDeleteRequest}
             onComplete={handleComplete}
+            onForward={handleForwardRequest} // ✅ NEW: Pass forward handler
             onStatusUpdate={handleDocumentStatusUpdate} // ✅ NEW: Pass callback to child
           />
         )}
+        </div>
 
-        <ConfirmModal
-          show={showConfirm}
-          title="Confirm Deletion"
-          message={
-            selectedDoc
-              ? `Are you sure you want to delete document "${selectedDoc.documentName}"?`
-              : ""
-          }
-          onConfirm={handleDelete}
-          onCancel={() => setShowConfirm(false)}
-        />
-
-        <CompletedModal
-          show={showCompletedModal}
-          onCancel={handleCloseCompletedModal}
-          document={selectedDoc}
-          onConfirm={handleCompletionConfirm}
-        />
+        {/* This single Modal component now handles all modal types */}
+        {modalState.show && (
+          <Modal
+            show={modalState.show}
+            type={modalState.type}
+            onCancel={handleModalCancel}
+            onConfirm={handleModalConfirm}
+            {...modalState.data} // Pass title, message, document, etc.
+          />
+        )}
       </Card>
     </div>
   );
